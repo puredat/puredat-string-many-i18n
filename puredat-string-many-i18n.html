@@ -1,0 +1,345 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../iron-ajax/iron-ajax.html">
+<link rel="import" href="../puredat-paper-input-autocomplete-chips/paper-input-autocomplete-chips.html">
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../paper-spinner/paper-spinner.html">
+<!--
+	`puredat-string-many-i18n` "STRING" type, "ONE" cardinality, and "I18N" widget.
+	
+	@demo demo/index.html 
+-->
+<dom-module id="puredat-string-many-i18n">
+	<template>
+		<style>
+			paper-spinner {
+				position: absolute;
+				margin-top: -45px;
+				margin-left: 10px;
+			}
+			
+			paper-tabs {
+				--paper-tabs-selection-bar-color: var(--accent-color);
+				padding-right: 10px;
+				font-size: 12px;
+				height: 35px;
+				
+				--paper-tabs-selection-bar: {
+					bottom: 6px;
+				}				
+			}
+			
+			paper-input-autocomplete-chips {
+				--paper-input-container: {
+					padding-right: 10px;
+				}
+			}
+			
+			paper-icon-button {
+				position: absolute;
+				right: 0;
+				bottom: 0;
+			}
+			
+			paper-tabs {
+				--paper-tabs-selection-bar-color: var(--default-primary-color);
+			}
+		</style>
+		
+		<iron-ajax id="ajax"
+				on-response="responseHandler"
+				url="https://api.mymemory.translated.net/get"
+				method="GET"
+				verbose="false">
+		</iron-ajax>
+
+		<div style="display: flex">
+			<span style="height: 10px; font-size: 12px; color: #757575; padding-top: 10px; flex: 1">[[label]]</span>
+
+			<paper-tabs 
+					id="languageTabs"
+					noink 
+					selected="{{selected}}">
+
+				<template is="dom-repeat" items="[[supportedLanguages]]">
+					<paper-tab active$="[[isSelected(index)]]">{{_getLangName(item)}}</paper-tab>
+				</template>
+			</paper-tabs>
+		</div>
+		
+		<iron-pages selected="{{selected}}">
+			<template is="dom-repeat" items="[[supportedLanguages]]">
+				<paper-input-autocomplete-chips
+						tabindex="-1"
+						no-chip-image
+						no-label-float
+						type="text"
+						maxlength="[[maxLength]]"
+						max-selected-items="100"
+						label="[[label]]"
+						readonly$="[[readOnly]]"
+						error-message="[[errorMessage]]"
+						invalid="[[_isInvalid(errorMessage)]]"
+						allowed-pattern="[[pattern]]"
+						allow-select-unknown-token
+						on-selected-objects-changed="_newValue"
+						data-lng$="{{item}}">
+					<paper-icon-button 
+							suffix 
+							title="Traducir" 
+							icon="translate"
+							disabled$="[[readOnly]]" 
+							on-click="translateHandler"
+							data-lng$="{{item}}">
+					</paper-icon-button>
+				</paper-input-autocomplete-chips>
+			</template>
+		</iron-pages>
+		<paper-spinner active$="[[isSpinnerActive(_pendingCount)]]"></paper-spinner>
+	</template>
+	
+	<script>
+		Polymer({
+			is: 'puredat-string-many-i18n',
+			
+			properties: {
+				
+				_pendingCount: {
+					type: Number,
+					value: 0
+				},
+				
+				selected: {
+					type: Number,
+					value: 0
+				},
+
+				supportedLanguages: {
+					type: Array
+				},
+				
+				value: {
+					type: Object,
+					observer: '_valueChanged'
+				},
+				
+				/** Name */
+				name: {
+					type: String
+				},
+				
+				/** Maximum length. */
+				maxLength: {
+					type: Number,
+					value: 100
+				},
+				
+				/** Allowed pattern. For example: [a-zA-Z]. */
+				pattern: {
+					type: String
+				},
+				
+				/** Descriptive label. */
+				label: {
+					type: String
+				},
+				
+				/** Error message. */
+				errorMessage: {
+					type: String
+				},
+				
+				/** Number of columns in a row of 10 columns. */
+				cols: {
+					type: Number,
+					value: 5,
+					observer: '_colsChanged'
+				},
+				
+				/** Read only. */
+				readOnly: {
+					type: Boolean,
+					value: false
+				},
+
+				_locales:{
+					type: Object,
+					value: function(){ return {"AF": "Afganistán","AL": "Albania","DZ": "Argelia","AS": "Samoa Americana","AD": "Andorra","AO": "Angola","AI": "Anguila","AQ": "Antártida","AG": "Antigua y Barbuda","AR": "Argentina","AM": "Armenia","AW": "Aruba",    "AU": "Australia",    "AT": "Austria",    "AZ": "Azerbaiyán",    "BS": "Bahamas",    "BH": "Bahrein",    "BD": "Bangladesh",    "BB": "Barbados",    "BY": "Belarús",    "BE": "Bélgica",    "BZ": "Belice",    "BJ": "Benin",    "BM": "Bermudas",    "BT": "Bhután",    "BO": "Bolivia",    "BA": "Bosnia y Herzegovina",    "BW": "Botswana",    "BV": "Isla Bouvet",    "BR": "Brasil",    "IO": "Territorio Británico del Océano Índico",    "BN": "Brunei Darussalam",    "BG": "Bulgaria",    "BF": "Burkina Faso",    "BI": "Burundi",    "KH": "Camboya",    "CM": "Camerún",    "CA": "Canadá",    "CV": "Cabo Verde",    "KY": "Islas Caimán",    "CF": "República Centroafricana",    "TD": "Chad",    "CL": "Chile",    "CN": "China",    "CX": "Isla de Navidad",    "CC": "Islas Cocos (Keeling)",    "CO": "Colombia",    "KM": "Comoras",    "CG": "Congo",    "CD": "Congo (República Democrática del)",    "CK": "Islas Cook",    "CR": "Costa Rica",    "CI": "Costa de Marfil",    "HR": "Croacia",    "CU": "Cuba",    "CY": "Chipre",    "CZ": "República Checa",    "DK": "Dinamarca",    "DJ": "Djibouti",    "DM": "Dominica",    "DO": "República Dominicana",    "EC": "Ecuador",    "EG": "Egipto",    "SV": "El Salvador",    "GQ": "Guinea Ecuatorial",    "ER": "Eritrea",    "EE": "Estonia",    "ET": "Etiopía",    "FK": "Islas Malvinas",    "FO": "Islas Feroe",    "FJ": "Fiji",    "FI": "Finlandia",    "FR": "Francia",    "GF": "Guayana Francesa",    "PF": "Polinesia Francesa",    "TF": "Tierras Australes Francesas",    "GA": "Gabón",    "GM": "Gambia",    "GE": "Georgia",    "DE": "Alemania",    "GH": "Ghana",    "GI": "Gibraltar",    "GR": "Grecia",    "GL": "Groenlandia",    "GD": "Granada",    "GP": "Guadeloupe",    "GU": "Guam",    "GT": "Guatemala",    "GN": "Guinea",    "GW": "Guinea Bissau",    "GY": "Guyana",    "HT": "Haití",    "HM": "Heard e Islas McDonald",    "VA": "Santa Sede",    "HN": "Honduras",    "HK": "Hong Kong",    "HU": "Hungría",    "IS": "Islandia",    "IN": "India",    "ID": "Indonesia",    "IR": "Irán (República Islámica de)",    "IQ": "Iraq",    "IE": "Irlanda",    "IL": "Israel",    "IT": "Italia",    "JM": "Jamaica",    "JP": "Japón",    "JO": "Jordania",    "KZ": "Kazajstán",    "KE": "Kenya",    "KI": "Kiribati",    "KP": "República Popular Democrática de Corea",    "KR": "República de Corea",    "KW": "Kuwait",    "KG": "Kirguistán",    "LA": "República Democrática Popular de Lao",    "LV": "Letonia",    "LB": "Líbano",    "LS": "Lesotho",    "LR": "Liberia",    "LY": "Libia",    "LI": "Liechtenstein",    "LT": "Lituania",    "LU": "Luxemburgo",    "MO": "Macao",    "MK": "Macedonia",    "MG": "Madagascar",    "MW": "Malawi",    "MY": "Malasia",    "MV": "Maldivas",    "ML": "Malí",    "MT": "Malta",    "MH": "Islas Marshall",    "MQ": "Martinique",    "MR": "Mauritania",    "MU": "Mauricio",    "YT": "Mayotte",    "MX": "México",    "FM": "Micronesia",    "MD": "Moldavia",    "MC": "Mónaco",    "MN": "Mongolia",    "MS": "Montserrat",    "MA": "Marruecos",    "MZ": "Mozambique",    "MM": "Myanmar",    "NA": "Namibia",    "NR": "Nauru",    "NP": "Nepal",    "NL": "Países Bajos",    "NC": "Nueva Caledonia",    "NZ": "Nueva Zelanda",    "NI": "Nicaragua",    "NE": "Níger",    "NG": "Nigeria",    "NU": "Niue",    "NF": "Isla Norfolk",    "MP": "Isla Marianas del Norte",    "NO": "Noruega",    "OM": "Omán",    "PK": "Pakistán",    "PW": "Palau",    "PS": "Palestina",    "PA": "Panamá",    "PG": "Papua Nueva Guinea",    "PY": "Paraguay",    "PE": "Perú",    "PH": "Filipinas",    "PN": "Pitcairn",    "PL": "Polonia",    "PT": "Portugal",    "PR": "Puerto Rico",    "QA": "Qatar",    "RE": "Reunión",    "RO": "Rumania",    "RU": "Rusia",    "RW": "Rwanda",    "SH": "Santa Helena, Ascensión y Tristán de Acuña",    "KN": "Saint Kitts y Nevis",    "LC": "Santa Lucía",    "PM": "San Pedro y Miquelón",    "VC": "San Vicente y las Granadinas",    "WS": "Samoa",    "SM": "San Marino",    "ST": "Santo Tomé y Príncipe",    "SA": "Arabia Saudita",    "SN": "Senegal",    "SC": "Seychelles",    "SL": "Sierra Leona",    "SG": "Singapur",    "SK": "Eslovaquia",    "SI": "Eslovenia",    "SB": "Islas Salomón",    "SO": "Somalia",    "ZA": "Sudáfrica",    "GS": "Georgia del Sur y las Islas Sandwich del Sur",    "ES": "España",    "LK": "Sri Lanka",    "SD": "Sudan",    "SR": "Suriname",    "SJ": "Svalbard y Jan Mayen",    "SZ": "Swazilandia",    "SE": "Suecia",    "CH": "Suiza",    "SY": "República Árabe Siria",    "TW": "Taiwán",    "TJ": "Tayikistán",    "TZ": "Tanzania",    "TH": "Tailandia",    "TL": "Timor-Leste",    "TG": "Togo",    "TK": "Tokelau",    "TO": "Tonga",    "TT": "Trinidad y Tobago",    "TN": "Túnez",    "TR": "Turquía",    "TM": "Turkmenistán",    "TC": "Islas Turcas y Caicos",    "TV": "Tuvalu",    "UG": "Uganda",    "UA": "Ucrania",    "AE": "Emiratos Árabes Unidos",    "GB": "Reino Unido",    "US": "Estados Unidos",    "UM": "Islas Ultramarinas Menores de los Estados Unidos",    "UY": "Uruguay",    "UZ": "Uzbekistán",    "VU": "Vanuatu",    "VE": "Venezuela",    "VN": "Vietnam",    "VG": "Islas Vírgenes británicas",    "VI": "Islas Vírgenes de los Estados Unidos",    "WF": "Wallis y Futuna",    "EH": "Sahara Occidental",    "YE": "Yemen",    "ZM": "Zambia",    "ZW": "Zimbabwe",    "AX": "Islas Åland",    "BQ": "Bonaire, San Eustaquio y Saba",    "CW": "Curaçao",    "GG": "Guernsey",    "IM": "Isla de Man",    "JE": "Jersey",    "ME": "Montenegro",    "BL": "Saint Barthélemy",    "MF": "Saint Martin (francesa)",    "RS": "Serbia",    "SX": "Sint Maarten (neerlandesa)",    "SS": "Sudán del Sur",    "XK": "Kosovo"  }; }
+				}
+			},
+
+			_getLangName: function(value){
+				return this._locales[value.split("_")[0].toUpperCase()];
+			},
+			
+			_valueChanged: function(value){
+				var elements = Polymer.dom(this.root).querySelectorAll("paper-input-autocomplete-chips");
+				for(var i = 0;i < elements.length;i++){
+					var element = elements[i];
+					if(element && element.getAttribute("data-lng")){
+						var elementLng = element.getAttribute("data-lng");
+						if(this.value && this.value[elementLng]){
+							var tmp = [];
+							for(var j = 0;j < this.value[elementLng].length;j++){
+								tmp.push({text:this.value[elementLng][j]});
+							}
+
+							if(tmp.length != element.selectedObjects.length){
+								element.selectedObjects = tmp;
+							}else{
+								var same = true;
+
+								for(var j = 0;j < element.selectedObjects.length;j++){
+									if(tmp.indexOf(element.selectedObjects[j].text) < 0){
+										same = false;
+									}
+								}
+
+								if(!same) element.selectedObjects = tmp;
+							}
+						}else{
+							if(element.selectedObjects.length != 0) element.selectedObjects = [];
+						}
+					}
+				}
+			},
+
+			_cloneValue: function(){
+				var cloneVal = {};
+				if(this.value){
+					for(var key in this.value){
+						cloneVal[key] = this.value[key] ? this.value[key].slice() : [];
+					}
+				}
+
+				return cloneVal;
+			},
+
+			_newValue: function(event){
+				var tmpValue = this._cloneValue();
+
+				if(event.srcElement || event.target){
+					var src = event.srcElement || event.target;
+					var lng = src.getAttribute("data-lng");
+					if(lng && src.selectedObjects){
+						var tmpElements = src.selectedObjects.slice();
+						tmpValue[lng] = [];
+						for(var i = 0;i < tmpElements.length; i++){
+							if(tmpElements[i].text) tmpValue[lng][i] = tmpElements[i].text;
+						}
+					}
+				}
+
+				var finalValue = this._correctValue(tmpValue);
+
+				if(!(JSON.stringify(this.value) === JSON.stringify(finalValue))){
+					for(var key in this.value) this.value[key] = finalValue && finalValue[key] ? finalValue[key] : [];
+					this.set("value", this.value);
+				}
+			},
+
+			_correctValue: function(value){
+				var tmpValue = value;
+
+				if(tmpValue){
+					var hasValues = false;
+					var toDelete = [];
+					for(var key in tmpValue){
+						if(tmpValue[key] != null && tmpValue[key].length > 0){
+							hasValues = true;
+						}else{
+							toDelete.push(key);
+						}
+					}
+
+					if(!hasValues){
+						tmpValue = null;
+					}else{
+						for(var i = 0;i < toDelete.length;i++){
+							delete tmpValue[toDelete[i]];
+						}
+					}
+				}
+
+				return tmpValue;
+			},
+
+			_getLangValue: function(value,code){
+				return this.value ? (this.value[code] ? this.value[code] : null) : null;
+			},
+			
+			isSpinnerActive: function(pendingCount) {
+				return (pendingCount > 0);
+			},
+			
+			translateHandler: function(event) {
+				if(event.srcElement || event.target){
+					var src = event.srcElement || event.target;
+
+					var baseLanguage = src.getAttribute("data-lng") || (src.parentNode ? src.parentNode.getAttribute("data-lng") : null);
+					
+					if (this.supportedLanguages != null
+							&& this.supportedLanguages.length > 0 && baseLanguage && this.value[baseLanguage]) {
+						var baseValue = this.value[baseLanguage];
+						
+						for (var i = 0; i < this.supportedLanguages.length; i++) {
+							var languageCode = this.supportedLanguages[i];
+							if (languageCode != baseLanguage) {
+								for(var j = 0;j < baseValue.length;j++){
+									this.$.ajax.params["q"] = baseValue[j];
+									this.$.ajax.params["langpair"] = baseLanguage.split("_")[0] + "|" + languageCode.replace("_", "-");
+									this.$.ajax.params["non-related-index"] = j;
+									this.$.ajax.generateRequest();
+									this._pendingCount++;
+								}
+							}
+						}
+					}
+				}
+			},
+			
+			responseHandler: function(event, request) {
+				this._pendingCount--;
+				if (event.detail.succeeded) {
+					if (event.detail.response != null
+							&& event.detail.response.matches != null
+							&& event.detail.response.matches.length > 0) {
+						var searchParams = new URLSearchParams(request.url);
+						var value = {};
+						for (var i = 0; i < this.supportedLanguages.length; i++) {
+							if (this.supportedLanguages[i] == searchParams.get("langpair").split("|")[1].replace("-", "_")) {
+								if(!value[this.supportedLanguages[i]]) value[this.supportedLanguages[i]] = [];
+								value[this.supportedLanguages[i]][searchParams.get("non-related-index")] = event.detail.response.responseData.translatedText;
+							}
+						}
+
+						var finalValue = this._correctValue(value);
+						if(!JSON.stringify(this.value) === JSON.stringify(finalValue)){
+							for(var key in this.value) this.value[key] = finalValue[key] ? finalValue[key] : [];
+							this.set("value", this.value);
+						}
+					}
+				}
+			},
+			
+			isSelected: function(number) {
+				return number == 0;
+			},
+			
+			_colsChanged: function(newValue, oldValue) {
+				this.style.minWidth = (30 * newValue) + "px";
+				this.style.flex = "0 0 " + (10 * newValue) + "%";
+			},
+			
+			/**
+			 * Returns if the field is valid.
+			 * @param {String} errorMessage The error message.
+			 * @return {Boolean} If the input field is valid.
+			 */
+			_isInvalid: function(errorMessage) {
+				return errorMessage != null
+						&& errorMessage != "";
+			}
+		});
+	</script>
+</dom-module>

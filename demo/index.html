@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+	<head>
+		<title>puredat-string-many-i18n demo</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+		
+		<script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+		
+		<link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+		<link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+		<link rel="import" href="../../paper-button/paper-button.html">
+		<link rel="import" href="../puredat-string-many-i18n.html">
+		
+		<style is="custom-style" include="demo-pages-shared-styles">
+		</style>
+	</head>
+	<body>
+		<div style="max-width: 1000px" class="vertical-section-container centered">
+			<h3>puredat-string-many-i18n demo</h3>
+			<demo-snippet>
+				<template>
+					<div style="display: flex">
+						<puredat-string-many-i18n 
+								id="field1"
+								name="field1"
+								max-length="100"
+								label="Just a string many i18n test"
+								cols="6"
+								value='{"en_US":["The dog is red","The dog is green"],"es_ES":["La casa es roja","La casa es verde"],"de":["Das Auto ist rot","Das Auto ist grün"]}'
+								pattern="[A-Za-z ]">
+						</puredat-string-many-i18n>
+						
+						<puredat-string-many-i18n
+								name="field2" 
+								cols="4" 
+								value='{"en_US":["The dog is red","The dog is green"],"es_ES":["La casa es roja","La casa es verde"],"de":["Das Auto ist rot","Das Auto ist grün"]}'
+								read-only>
+						</puredat-string-many-i18n>
+					</div>
+					
+					<paper-button onclick="setErrorMessageClickHandler(event)">Set error message</paper-button>
+					<paper-button onclick="resetErrorMessageClickHandler(event)">Reset error message</paper-button>
+					
+					<paper-button onclick="getValuesClickHandler(event)">Get values</paper-button>
+					<paper-button onclick="setValuesClickHandler(event)">Set values</paper-button>
+					
+					<script>
+						function setErrorMessageClickHandler(event) {
+							document.getElementById("field1").errorMessage = "Error message";
+						}
+						
+						function resetErrorMessageClickHandler(event) {
+							document.getElementById("field1").errorMessage = null;
+						}
+						
+						function getValuesClickHandler(event) {
+							console.log(document.getElementById("field1").values);
+						}
+						
+						function setValuesClickHandler(event) {
+							document.getElementById("field1").value = {"en_US":["The dog is red","The dog is green"],"es_ES":["La casa es roja","La casa es verde"],"de":["Das Auto ist rot","Das Auto ist grün"]};
+							document.getElementById("field1").selected = 0;
+						}
+					</script>
+				</template> 
+			</demo-snippet>
+		</div>
+	</body>
+</html>
